@@ -284,20 +284,23 @@ const partidos = [
 ];
 
 // ─── RESULTADOS CONFIRMADOS (base fija, la API complementa en vivo) ──────────
+// Resultados por ID de partido (coincide con campo "id" en array partidos)
 const RESULTADOS_BASE = {
   // Jun 11
-  "mexicosudafrica":        {gL:2, gV:0, fin:true},
-  "coreiadelsurrepcheca":   {gL:2, gV:1, fin:true},
+  "mex-rsa":  {gL:2, gV:0, fin:true},
+  "kor-cze":  {gL:2, gV:1, fin:true},
   // Jun 12
-  "canadabosniaherz":       {gL:1, gV:1, fin:true},
-  "estadosunidosparaguay":  {gL:4, gV:1, fin:true},
+  "can-bih":  {gL:1, gV:1, fin:true},
+  "usa-par":  {gL:4, gV:1, fin:true},
   // Jun 13
-  "qatarsuiza":             {gL:1, gV:1, fin:true},
-  "brasilmarruecos":        {gL:1, gV:1, fin:true},
-  "haitiescocia":           {gL:0, gV:1, fin:true},
-  "australiaturquia":       {gL:2, gV:0, fin:true},
+  "qat-sui":  {gL:1, gV:1, fin:true},
+  "bra-mar":  {gL:1, gV:1, fin:true},
+  "hai-sco":  {gL:0, gV:1, fin:true},
+  "aus-tur":  {gL:2, gV:0, fin:true},
   // Jun 14
-  "alemaniaCurazao":        {gL:7, gV:1, fin:true},
+  "ger-cur":  {gL:7, gV:1, fin:true},
+  "ned-jpn":  {gL:2, gV:2, fin:true},
+  "civ-ecu":  {gL:1, gV:0, fin:true},
 };
 
 let marcadores = {};
@@ -316,7 +319,7 @@ async function actualizarMarcadores(manual = false) {
   btn.style.transform = 'rotate(0deg)';
   btn.style.animation = 'spin 1s linear infinite';
 
-  // Siempre partimos de resultados confirmados
+  // Siempre partimos de resultados confirmados (por ID)
   marcadores = {...RESULTADOS_BASE};
 
   try {
@@ -381,23 +384,18 @@ function normalizar(str) {
 }
 
 function buscarMarcador(p) {
+  // 1. Buscar por ID del partido (más confiable)
+  if (p.id && marcadores[p.id]) return marcadores[p.id];
+
+  // 2. Buscar por nombre normalizado (datos de API)
   const lN = normalizar(p.l.replace(/[^\w\s]/g, '').trim());
   const vN = normalizar(p.v.replace(/[^\w\s]/g, '').trim());
   
-  // Clave directa sin separador (para RESULTADOS_BASE)
-  const keyJunto = lN + vN;
-  if (marcadores[keyJunto]) return marcadores[keyJunto];
-
-  // Clave con guión (para datos de API)
-  const keyGuion = lN + '-' + vN;
-  if (marcadores[keyGuion]) return marcadores[keyGuion];
-
-  // Búsqueda parcial en todos los keys
   for (const k of Object.keys(marcadores)) {
-    const kNorm = k.replace('-','');
-    if (kNorm.includes(lN.slice(0,5)) && kNorm.includes(vN.slice(0,5))) {
+    const kN = normalizar(k.replace(/-/g,''));
+    if (kN.includes(lN.slice(0,5)) && kN.includes(vN.slice(0,5))) {
       const m = marcadores[k];
-      if (m.gL !== null) return m;
+      if (m && m.gL !== null) return m;
     }
   }
   return null;
