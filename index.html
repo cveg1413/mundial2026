@@ -314,65 +314,63 @@ let filtroFase = "Todos";
 let filtroGrupo = "Todos";
 
 // ─── API ───────────────────────────────────────────────────────────────────
+const API_KEY = '11784302abdd4883869d45d6c7d1225e';
+const WC_ID = 2000; // World Cup 2026 en football-data.org
+
 async function actualizarMarcadores(manual = false) {
   const btn = document.getElementById('btnRefresh');
-  btn.style.transform = 'rotate(0deg)';
   btn.style.animation = 'spin 1s linear infinite';
 
-  // Siempre partimos de resultados confirmados (por ID)
+  // Siempre partimos de resultados base confirmados
   marcadores = {...RESULTADOS_BASE};
+  hayPartidosVivos = false;
 
   try {
-    const res = await fetch('https://worldcup26.ir/get/games', {
-      signal: AbortSignal.timeout(8000)
+    const res = await fetch(`https://api.football-data.org/v4/competitions/${WC_ID}/matches`, {
+      headers: { 'X-Auth-Token': API_KEY },
+      signal: AbortSignal.timeout(10000)
     });
-    if (!res.ok) throw new Error('API error');
+
+    if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
+    const matches = data.matches || [];
 
-    marcadores = {};
-    hayPartidosVivos = false;
+    matches.forEach(m => {
+      const homeId = normalizar(m.homeTeam?.name || m.homeTeam?.shortName || '');
+      const awayId = normalizar(m.awayTeam?.name || m.awayTeam?.shortName || '');
 
-    const games = Array.isArray(data) ? data : (data.games || data.matches || data.data || []);
+      const gL = m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null;
+      const gV = m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null;
+      const status = (m.status || '').toUpperCase();
 
-    games.forEach(game => {
-      // Intentamos mapear por nombre de equipos
-      const localNorm = normalizar(game.home_team || game.homeTeam || game.home || '');
-      const visitaNorm = normalizar(game.away_team || game.awayTeam || game.away || '');
-      const key = localNorm + '-' + visitaNorm;
+      const esVivo = status === 'IN_PLAY' || status === 'PAUSED' || status === 'HALFTIME';
+      const esFin  = status === 'FINISHED';
+      const minuto = m.minute || null;
 
-      const golesL = game.home_score ?? game.homeScore ?? game.home_goals ?? null;
-      const golesV = game.away_score ?? game.awayScore ?? game.away_goals ?? null;
-      const estado = (game.status || game.matchStatus || '').toLowerCase();
-      const minuto = game.minute || game.matchMinute || null;
-
-      const esVivo = estado.includes('live') || estado.includes('progress') ||
-                     estado === '1h' || estado === '2h' || estado === 'ht' || estado === 'et';
       if (esVivo) hayPartidosVivos = true;
 
-      if (golesL !== null && golesV !== null) {
-        marcadores[key] = {
-          gL: golesL, gV: golesV,
-          vivo: esVivo,
-          minuto: minuto,
-          fin: estado.includes('finish') || estado.includes('ft') || estado === 'finished'
-        };
+      // Guardar por nombres normalizados para busqueda flexible
+      if (gL !== null && gV !== null) {
+        const key = homeId + '-' + awayId;
+        marcadores[key] = { gL, gV, vivo: esVivo, fin: esFin, minuto };
       }
     });
 
     ultimaActualizacion = new Date();
-    setStatus('ok', `Actualizado ${ultimaActualizacion.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'})}`);
-
+    const hora = ultimaActualizacion.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+    setStatus(hayPartidosVivos ? 'live' : 'ok', `Actualizado ${hora}${hayPartidosVivos ? ' · Partido en vivo' : ''}`);
     if (manual) mostrarToast('✅ Marcadores actualizados');
+
   } catch (e) {
-    setStatus('err', 'Sin datos en vivo — mostrando últimos resultados');
-    if (manual) mostrarToast('⚠️ No se pudo conectar a la API');
+    console.warn('API error:', e);
+    setStatus('err', 'Sin conexión — mostrando resultados guardados');
+    if (manual) mostrarToast('⚠️ Sin conexión a la API');
   }
 
   btn.style.animation = '';
   render();
 
-  // Auto-refresh cada 2 min si hay partidos vivos, si no cada 10 min
-  const intervalo = hayPartidosVivos ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  const intervalo = hayPartidosVivos ? 90 * 1000 : 8 * 60 * 1000;
   clearTimeout(window._refreshTimer);
   window._refreshTimer = setTimeout(() => actualizarMarcadores(), intervalo);
 }
@@ -384,16 +382,24 @@ function normalizar(str) {
 }
 
 function buscarMarcador(p) {
-  // 1. Buscar por ID del partido (más confiable)
+  // 1. Por ID directo (RESULTADOS_BASE)
   if (p.id && marcadores[p.id]) return marcadores[p.id];
 
-  // 2. Buscar por nombre normalizado (datos de API)
-  const lN = normalizar(p.l.replace(/[^\w\s]/g, '').trim());
-  const vN = normalizar(p.v.replace(/[^\w\s]/g, '').trim());
-  
+  // 2. Por nombre normalizado (datos de API football-data.org)
+  const lN = normalizar(p.l.replace(/[^\w\s]/g,'').trim());
+  const vN = normalizar(p.v.replace(/[^\w\s]/g,'').trim());
+
+  // Búsqueda exacta
+  const keyExacto = lN + '-' + vN;
+  if (marcadores[keyExacto]) return marcadores[keyExacto];
+
+  // Búsqueda parcial (por si los nombres difieren un poco)
   for (const k of Object.keys(marcadores)) {
-    const kN = normalizar(k.replace(/-/g,''));
-    if (kN.includes(lN.slice(0,5)) && kN.includes(vN.slice(0,5))) {
+    const [kL, kV] = k.split('-');
+    if (!kL || !kV) continue;
+    const matchL = lN.includes(kL.slice(0,5)) || kL.includes(lN.slice(0,5));
+    const matchV = vN.includes(kV.slice(0,5)) || kV.includes(vN.slice(0,5));
+    if (matchL && matchV) {
       const m = marcadores[k];
       if (m && m.gL !== null) return m;
     }
