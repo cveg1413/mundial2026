@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#16a34a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mundial 2026">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<title>Mundial 2026 — TV México</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #f1f5f9; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+.header { background: linear-gradient(135deg, #16a34a 0%, #15803d 60%, #166534 100%); padding: 20px 16px 16px; }
+.header-top { display: flex; align-items: center; gap: 10px; }
+.header h1 { font-size: 22px; font-weight: 800; color: #fff; }
+.header p { font-size: 12px; color: #dcfce7; margin-top: 3px; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.badge { border-radius: 8px; padding: 3px 9px; font-size: 11px; font-weight: 600; }
+.badge-tv { background: #ffffff33; border: 1px solid #ffffff88; color: #fff; }
+.badge-cable { background: #ffffff22; border: 1px solid #ffffff55; color: #dcfce7; }
+
+/* Status bar */
+.status-bar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 6px 16px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; }
+.status-dot.live { background: #ef4444; animation: pulse 1.5s infinite; }
+.status-dot.ok { background: #16a34a; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Filtros */
+.filtros { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 10px 14px; box-shadow: 0 1px 4px #0001; }
+.filtros-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
+.btn-toggle { border-radius: 20px; padding: 5px 13px; font-size: 13px; font-weight: 700; border: 2px solid; cursor: pointer; transition: all 0.15s; background: transparent; }
+.btn-mexico { color: #16a34a; border-color: #16a34a88; }
+.btn-mexico.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+.btn-abierta { color: #b45309; border-color: #b4530988; }
+.btn-abierta.active { background: #b45309; color: #fff; border-color: #b45309; }
+.btn-refresh { color: #6366f1; border-color: #6366f188; margin-left: auto; }
+.btn-refresh.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.chips { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; flex-wrap: nowrap; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { border: none; border-radius: 14px; padding: 4px 11px; font-size: 12px; font-weight: 600; cursor: pointer; background: #e2e8f0; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+.chip.active-g { background: #16a34a; color: #fff; }
+.chip.active-f { background: #3b82f6; color: #fff; }
+.chips-grupo { margin-top: 7px; }
+
+/* Contenido */
+.content { max-width: 720px; margin: 0 auto; padding: 12px 12px 50px; }
+
+.fecha-header { display: flex; align-items: center; gap: 10px; margin: 16px 0 7px; }
+.fecha-line { height: 1px; flex: 1; background: #cbd5e1; }
+.fecha-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.fecha-hoy { color: #16a34a; }
+
+.partido { border-radius: 12px; margin-bottom: 6px; padding: 11px 12px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 2px #0001; transition: box-shadow 0.15s; }
+.partido:active { box-shadow: 0 0 0 2px #16a34a44; }
+.partido.mexico { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-color: #86efac; }
+.partido.elim { background: #eff6ff; border-color: #bfdbfe; }
+.partido.en-vivo { border-color: #ef4444 !important; box-shadow: 0 0 0 2px #ef444422 !important; }
+.partido-inner { display: flex; align-items: center; gap: 8px; }
+.hora-box { min-width: 48px; text-align: center; flex-shrink: 0; }
+.hora { font-size: 15px; font-weight: 800; color: #1e293b; display: block; }
+.grupo-tag { font-size: 10px; color: #94a3b8; }
+.match-center { flex: 1; text-align: center; min-width: 0; }
+.marcador { font-size: 22px; font-weight: 900; color: #16a34a; letter-spacing: 3px; display: block; line-height: 1.1; }
+.marcador.en-vivo { color: #ef4444; }
+.minuto { font-size: 10px; color: #ef4444; font-weight: 700; }
+.equipos { font-size: 13px; font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.equipos .sep { color: #94a3b8; font-weight: 400; }
+.sede-txt { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+.canal-box { min-width: 82px; text-align: right; flex-shrink: 0; }
+.canal-badge { display: inline-block; border-radius: 7px; padding: 3px 6px; font-size: 10px; font-weight: 600; line-height: 1.4; }
+.canal-tv { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.canal-cable { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.canales-extra { font-size: 10px; color: #94a3b8; margin-top: 4px; padding-left: 56px; }
+.live-badge { display: inline-block; background: #ef4444; color: #fff; border-radius: 5px; padding: 1px 5px; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; margin-right: 4px; animation: pulse 1.5s infinite; }
+
+.empty { text-align: center; padding: 50px 20px; color: #94a3b8; }
+.empty .ico { font-size: 40px; margin-bottom: 10px; }
+
+.nota { margin-top: 16px; padding: 12px 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 11px; color: #94a3b8; line-height: 1.8; }
+.nota strong { color: #64748b; }
+
+/* Toast */
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; z-index: 100; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span style="font-size:32px">🏆</span>
+    <div>
+      <h1>Mundial 2026</h1>
+      <p>Resultados en vivo · TV Abierta México</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge badge-tv">📺 Canal 5 · Azteca 7 · Las Estrellas</span>
+    <span class="badge badge-cable">📡 TUDN · ViX Premium</span>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">Cargando resultados...</span>
+</div>
+
+<div class="filtros">
+  <div class="filtros-row">
+    <button class="btn-toggle btn-mexico" id="btnMexico" onclick="toggleMexico()">🇲🇽 Solo México</button>
+    <button class="btn-toggle btn-abierta" id="btnAbierta" onclick="toggleAbierta()">📺 TV Abierta</button>
+    <button class="btn-toggle btn-refresh" id="btnRefresh" onclick="actualizarMarcadores(true)" title="Actualizar">🔄</button>
+  </div>
+  <div class="chips" id="chipsFase">
+    <button class="chip active-f" onclick="setFase('Todos',this)">Todos</button>
+    <button class="chip" onclick="setFase('Grupos',this)">Grupos</button>
+    <button class="chip" onclick="setFase('16avos',this)">16avos</button>
+    <button class="chip" onclick="setFase('Octavos',this)">Octavos</button>
+    <button class="chip" onclick="setFase('Cuartos',this)">Cuartos</button>
+    <button class="chip" onclick="setFase('Semifinales',this)">Semifinales</button>
+    <button class="chip" onclick="setFase('3er Lugar',this)">3er Lugar</button>
+    <button class="chip" onclick="setFase('Final',this)">Final</button>
+  </div>
+  <div class="chips chips-grupo" id="chipsGrupo">
+    <button class="chip active-g" onclick="setGrupo('Todos',this)">Todos</button>
+    <button class="chip" onclick="setGrupo('A',this)">G-A</button>
+    <button class="chip" onclick="setGrupo('B',this)">G-B</button>
+    <button class="chip" onclick="setGrupo('C',this)">G-C</button>
+    <button class="chip" onclick="setGrupo('D',this)">G-D</button>
+    <button class="chip" onclick="setGrupo('E',this)">G-E</button>
+    <button class="chip" onclick="setGrupo('F',this)">G-F</button>
+    <button class="chip" onclick="setGrupo('G',this)">G-G</button>
+    <button class="chip" onclick="setGrupo('H',this)">G-H</button>
+    <button class="chip" onclick="setGrupo('I',this)">G-I</button>
+    <button class="chip" onclick="setGrupo('J',this)">G-J</button>
+    <button class="chip" onclick="setGrupo('K',this)">G-K</button>
+    <button class="chip" onclick="setGrupo('L',this)">G-L</button>
+  </div>
+</div>
+
+<div class="content" id="content"><div class="empty"><div class="ico">⚽</div><p>Cargando partidos...</p></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATOS BASE (horarios + canales) ───────────────────────────────────────
+const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+const partidos = [
+  // Jun 11
+  {id:"mex-rsa",f:"2026-06-11",h:"13:00",l:"🇲🇽 México",v:"🇿🇦 Sudáfrica",g:"A",s:"Ciudad de México",c:"Canal 5, Las Estrellas, Azteca 7",tv:true,mx:true},
+  {id:"kor-cze",f:"2026-06-11",h:"20:00",l:"🇰🇷 Corea del Sur",v:"🇨🇿 Rep. Checa",g:"A",s:"Guadalajara",c:"TUDN, ViX Premium",tv:false},
+  // Jun 12
+  {id:"can-bih",f:"2026-06-12",h:"13:00",l:"🇨🇦 Canadá",v:"🇧🇦 Bosnia y Herz.",g:"B",s:"Toronto",c:"TUDN, ViX Premium",tv:false},
+  {id:"usa-par",f:"2026-06-12",h:"19:00",l:"🇺🇸 Estados Unidos",v:"🇵🇾 Paraguay",g:"D",s:"Los Ángeles",c:"Canal 5, Azteca 7",tv:true},
+  // Jun 13
+  {id:"qat-sui",f:"2026-06-13",h:"13:00",l:"🇶🇦 Qatar",v:"🇨🇭 Suiza",g:"B",s:"San Francisco",c:"TUDN, ViX Premium",tv:false},
+  {id:"bra-mar",f:"2026-06-13",h:"16:00",l:"🇧🇷 Brasil",v:"🇲🇦 Marruecos",g:"C",s:"Nueva Jersey",c:"Canal 5, Azteca 7",tv:true},
+  {id:"hai-sco",f:"2026-06-13",h:"19:00",l:"🇭🇹 Haití",v:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia",g:"C",s:"Boston",c:"TUDN, ViX Premium",tv:false},
+  {id:"aus-tur",f:"2026-06-13",h:"22:00",l:"🇦🇺 Australia",v:"🇹🇷 Turquía",g:"D",s:"Vancouver",c:"TUDN, ViX Premium",tv:false},
+  // Jun 14
+  {id:"ger-cur",f:"2026-06-14",h:"11:00",l:"🇩🇪 Alemania",v:"🇨🇼 Curazao",g:"E",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"ned-jpn",f:"2026-06-14",h:"14:00",l:"🇳🇱 Países Bajos",v:"🇯🇵 Japón",g:"F",s:"Dallas",c:"Canal 5, Azteca 7, TUDN",tv:true},
+  {id:"civ-ecu",f:"2026-06-14",h:"17:00",l:"🇨🇮 Costa de Marfil",v:"🇪🇨 Ecuador",g:"E",s:"Filadelfia",c:"TUDN, ViX Premium",tv:false},
+  {id:"swe-tun",f:"2026-06-14",h:"20:00",l:"🇸🇪 Suecia",v:"🇹🇳 Túnez",g:"F",s:"Monterrey",c:"Canal 5, Azteca 7",tv:true},
+  // Jun 15
+  {id:"esp-cpv",f:"2026-06-15",h:"10:00",l:"🇪🇸 España",v:"🇨🇻 Cabo Verde",g:"H",s:"Atlanta",c:"Canal 5, Azteca 7",tv:true},
+  {id:"bel-egy",f:"2026-06-15",h:"13:00",l:"🇧🇪 Bélgica",v:"🇪🇬 Egipto",g:"G",s:"Seattle",c:"TUDN, ViX Premium",tv:false},
+  {id:"ksa-uru",f:"2026-06-15",h:"16:00",l:"🇸🇦 Arabia Saudita",v:"🇺🇾 Uruguay",g:"H",s:"Miami",c:"TUDN, ViX Premium",tv:false},
+  {id:"irn-nzl",f:"2026-06-15",h:"19:00",l:"🇮🇷 Irán",v:"🇳🇿 Nueva Zelanda",g:"G",s:"Los Ángeles",c:"TUDN, ViX Premium",tv:false},
+  // Jun 16
+  {id:"fra-sen",f:"2026-06-16",h:"13:00",l:"🇫🇷 Francia",v:"🇸🇳 Senegal",g:"I",s:"Nueva Jersey",c:"Canal 5, Azteca 7",tv:true},
+  {id:"irq-nor",f:"2026-06-16",h:"16:00",l:"🇮🇶 Irak",v:"🇳🇴 Noruega",g:"I",s:"Boston",c:"TUDN, ViX Premium",tv:false},
+  {id:"arg-alg",f:"2026-06-16",h:"19:00",l:"🇦🇷 Argentina",v:"🇩🇿 Argelia",g:"J",s:"Kansas City",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"aut-jor",f:"2026-06-16",h:"22:00",l:"🇦🇹 Austria",v:"🇯🇴 Jordania",g:"J",s:"San Francisco",c:"TUDN, ViX Premium",tv:false},
+  // Jun 17
+  {id:"por-cod",f:"2026-06-17",h:"11:00",l:"🇵🇹 Portugal",v:"🇨🇩 RD del Congo",g:"K",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"eng-cro",f:"2026-06-17",h:"14:00",l:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra",v:"🇭🇷 Croacia",g:"L",s:"Dallas",c:"Canal 5, Azteca 7, TUDN",tv:true},
+  {id:"gha-pan",f:"2026-06-17",h:"17:00",l:"🇬🇭 Ghana",v:"🇵🇦 Panamá",g:"L",s:"Toronto",c:"TUDN, ViX Premium",tv:false},
+  {id:"uzb-col",f:"2026-06-17",h:"20:00",l:"🇺🇿 Uzbekistán",v:"🇨🇴 Colombia",g:"K",s:"Ciudad de México",c:"Canal 5, Las Estrellas, Azteca 7",tv:true},
+  // Jun 18
+  {id:"cze-rsa",f:"2026-06-18",h:"10:00",l:"🇨🇿 Rep. Checa",v:"🇿🇦 Sudáfrica",g:"A",s:"Atlanta",c:"TUDN, ViX Premium",tv:false},
+  {id:"sui-bih",f:"2026-06-18",h:"13:00",l:"🇨🇭 Suiza",v:"🇧🇦 Bosnia y Herz.",g:"B",s:"Los Ángeles",c:"TUDN, ViX Premium",tv:false},
+  {id:"can-qat",f:"2026-06-18",h:"16:00",l:"🇨🇦 Canadá",v:"🇶🇦 Qatar",g:"B",s:"Vancouver",c:"TUDN, ViX Premium",tv:false},
+  {id:"mex-kor",f:"2026-06-18",h:"19:00",l:"🇲🇽 México",v:"🇰🇷 Corea del Sur",g:"A",s:"Guadalajara",c:"Canal 5, Las Estrellas, Azteca 7",tv:true,mx:true},
+  // Jun 19
+  {id:"usa-aus",f:"2026-06-19",h:"13:00",l:"🇺🇸 Estados Unidos",v:"🇦🇺 Australia",g:"D",s:"Seattle",c:"Canal 5, Azteca 7",tv:true},
+  {id:"sco-mar",f:"2026-06-19",h:"16:00",l:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia",v:"🇲🇦 Marruecos",g:"C",s:"Boston",c:"TUDN, ViX Premium",tv:false},
+  {id:"bra-hai",f:"2026-06-19",h:"18:30",l:"🇧🇷 Brasil",v:"🇭🇹 Haití",g:"C",s:"Filadelfia",c:"Canal 5, Azteca 7",tv:true},
+  {id:"tur-par",f:"2026-06-19",h:"21:00",l:"🇹🇷 Turquía",v:"🇵🇾 Paraguay",g:"D",s:"San Francisco",c:"TUDN, ViX Premium",tv:false},
+  // Jun 20
+  {id:"ned-swe",f:"2026-06-20",h:"11:00",l:"🇳🇱 Países Bajos",v:"🇸🇪 Suecia",g:"F",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"ger-civ",f:"2026-06-20",h:"14:00",l:"🇩🇪 Alemania",v:"🇨🇮 Costa de Marfil",g:"E",s:"Toronto",c:"TUDN, ViX Premium",tv:false},
+  {id:"ecu-cur",f:"2026-06-20",h:"20:00",l:"🇪🇨 Ecuador",v:"🇨🇼 Curazao",g:"E",s:"Kansas City",c:"TUDN, ViX Premium",tv:false},
+  {id:"tun-jpn",f:"2026-06-20",h:"22:00",l:"🇹🇳 Túnez",v:"🇯🇵 Japón",g:"F",s:"Monterrey",c:"Canal 5, Azteca 7",tv:true},
+  // Jun 21
+  {id:"esp-ksa",f:"2026-06-21",h:"10:00",l:"🇪🇸 España",v:"🇸🇦 Arabia Saudita",g:"H",s:"Atlanta",c:"TUDN, ViX Premium",tv:false},
+  {id:"bel-irn",f:"2026-06-21",h:"13:00",l:"🇧🇪 Bélgica",v:"🇮🇷 Irán",g:"G",s:"Los Ángeles",c:"TUDN, ViX Premium",tv:false},
+  {id:"uru-cpv",f:"2026-06-21",h:"16:00",l:"🇺🇾 Uruguay",v:"🇨🇻 Cabo Verde",g:"H",s:"Miami",c:"TUDN, ViX Premium",tv:false},
+  {id:"nzl-egy",f:"2026-06-21",h:"19:00",l:"🇳🇿 Nueva Zelanda",v:"🇪🇬 Egipto",g:"G",s:"Vancouver",c:"TUDN, ViX Premium",tv:false},
+  // Jun 22
+  {id:"arg-aut",f:"2026-06-22",h:"11:00",l:"🇦🇷 Argentina",v:"🇦🇹 Austria",g:"J",s:"Dallas",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"fra-irq",f:"2026-06-22",h:"15:00",l:"🇫🇷 Francia",v:"🇮🇶 Irak",g:"I",s:"Filadelfia",c:"TUDN, ViX Premium",tv:false},
+  {id:"nor-sen",f:"2026-06-22",h:"18:00",l:"🇳🇴 Noruega",v:"🇸🇳 Senegal",g:"I",s:"Nueva Jersey",c:"TUDN, ViX Premium",tv:false},
+  {id:"jor-alg",f:"2026-06-22",h:"21:00",l:"🇯🇴 Jordania",v:"🇩🇿 Argelia",g:"J",s:"San Francisco",c:"TUDN, ViX Premium",tv:false},
+  // Jun 23
+  {id:"por-uzb",f:"2026-06-23",h:"11:00",l:"🇵🇹 Portugal",v:"🇺🇿 Uzbekistán",g:"K",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"eng-gha",f:"2026-06-23",h:"14:00",l:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra",v:"🇬🇭 Ghana",g:"L",s:"Boston",c:"TUDN, ViX Premium",tv:false},
+  {id:"pan-cro",f:"2026-06-23",h:"17:00",l:"🇵🇦 Panamá",v:"🇭🇷 Croacia",g:"L",s:"Toronto",c:"TUDN, ViX Premium",tv:false},
+  {id:"col-cod",f:"2026-06-23",h:"20:00",l:"🇨🇴 Colombia",v:"🇨🇩 RD del Congo",g:"K",s:"Guadalajara",c:"TUDN, ViX Premium",tv:false},
+  // Jun 24
+  {id:"sui-can",f:"2026-06-24",h:"13:00",l:"🇨🇭 Suiza",v:"🇨🇦 Canadá",g:"B",s:"Vancouver",c:"TUDN, ViX Premium",tv:false},
+  {id:"bih-qat",f:"2026-06-24",h:"13:00",l:"🇧🇦 Bosnia y Herz.",v:"🇶🇦 Qatar",g:"B",s:"Seattle",c:"TUDN, ViX Premium",tv:false},
+  {id:"rsa-mex",f:"2026-06-24",h:"20:00",l:"🇿🇦 Sudáfrica",v:"🇲🇽 México",g:"A",s:"Dallas",c:"Canal 5, Las Estrellas, Azteca 7",tv:true,mx:true},
+  {id:"cze-kor",f:"2026-06-24",h:"20:00",l:"🇨🇿 Rep. Checa",v:"🇰🇷 Corea del Sur",g:"A",s:"Nueva York",c:"TUDN, ViX Premium",tv:false},
+  // Jun 25
+  {id:"par-aus",f:"2026-06-25",h:"13:00",l:"🇵🇾 Paraguay",v:"🇦🇺 Australia",g:"D",s:"Miami",c:"TUDN, ViX Premium",tv:false},
+  {id:"tur-usa",f:"2026-06-25",h:"13:00",l:"🇹🇷 Turquía",v:"🇺🇸 Estados Unidos",g:"D",s:"Atlanta",c:"TUDN, ViX Premium",tv:false},
+  {id:"mar-bra",f:"2026-06-25",h:"20:00",l:"🇲🇦 Marruecos",v:"🇧🇷 Brasil",g:"C",s:"Boston",c:"Canal 5, Azteca 7",tv:true},
+  {id:"sco-hai",f:"2026-06-25",h:"20:00",l:"🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia",v:"🇭🇹 Haití",g:"C",s:"Toronto",c:"TUDN, ViX Premium",tv:false},
+  // Jun 26
+  {id:"civ-ger",f:"2026-06-26",h:"13:00",l:"🇨🇮 Costa de Marfil",v:"🇩🇪 Alemania",g:"E",s:"Filadelfia",c:"TUDN, ViX Premium",tv:false},
+  {id:"cur-ecu",f:"2026-06-26",h:"13:00",l:"🇨🇼 Curazao",v:"🇪🇨 Ecuador",g:"E",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"jpn-ned",f:"2026-06-26",h:"20:00",l:"🇯🇵 Japón",v:"🇳🇱 Países Bajos",g:"F",s:"Dallas",c:"TUDN, ViX Premium",tv:false},
+  {id:"swe-tun2",f:"2026-06-26",h:"20:00",l:"🇸🇪 Suecia",v:"🇹🇳 Túnez",g:"F",s:"Guadalajara",c:"Canal 5, Azteca 7",tv:true},
+  // Jun 27
+  {id:"egy-bel",f:"2026-06-27",h:"13:00",l:"🇪🇬 Egipto",v:"🇧🇪 Bélgica",g:"G",s:"San Francisco",c:"TUDN, ViX Premium",tv:false},
+  {id:"nzl-irn",f:"2026-06-27",h:"13:00",l:"🇳🇿 Nueva Zelanda",v:"🇮🇷 Irán",g:"G",s:"Kansas City",c:"TUDN, ViX Premium",tv:false},
+  {id:"cpv-ksa",f:"2026-06-27",h:"20:00",l:"🇨🇻 Cabo Verde",v:"🇸🇦 Arabia Saudita",g:"H",s:"Los Ángeles",c:"TUDN, ViX Premium",tv:false},
+  {id:"uru-esp",f:"2026-06-27",h:"20:00",l:"🇺🇾 Uruguay",v:"🇪🇸 España",g:"H",s:"Guadalajara",c:"Canal 5, Las Estrellas, Azteca 7",tv:true},
+  // Jun 28
+  {id:"irq-nor2",f:"2026-06-28",h:"13:00",l:"🇮🇶 Irak",v:"🇳🇴 Noruega",g:"I",s:"Nueva York",c:"TUDN, ViX Premium",tv:false},
+  {id:"sen-fra",f:"2026-06-28",h:"13:00",l:"🇸🇳 Senegal",v:"🇫🇷 Francia",g:"I",s:"Seattle",c:"TUDN, ViX Premium",tv:false},
+  {id:"alg-arg",f:"2026-06-28",h:"20:00",l:"🇩🇿 Argelia",v:"🇦🇷 Argentina",g:"J",s:"Boston",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"jor-aut",f:"2026-06-28",h:"20:00",l:"🇯🇴 Jordania",v:"🇦🇹 Austria",g:"J",s:"Miami",c:"TUDN, ViX Premium",tv:false},
+  // Jun 29
+  {id:"cod-por",f:"2026-06-29",h:"13:00",l:"🇨🇩 RD del Congo",v:"🇵🇹 Portugal",g:"K",s:"Kansas City",c:"TUDN, ViX Premium",tv:false},
+  {id:"uzb-col2",f:"2026-06-29",h:"13:00",l:"🇺🇿 Uzbekistán",v:"🇨🇴 Colombia",g:"K",s:"Atlanta",c:"TUDN, ViX Premium",tv:false},
+  {id:"cro-eng",f:"2026-06-29",h:"20:00",l:"🇭🇷 Croacia",v:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra",g:"L",s:"Houston",c:"TUDN, ViX Premium",tv:false},
+  {id:"gha-pan2",f:"2026-06-29",h:"20:00",l:"🇬🇭 Ghana",v:"🇵🇦 Panamá",g:"L",s:"Filadelfia",c:"TUDN, ViX Premium",tv:false},
+  // 16avos
+  {id:"r16-1",f:"2026-07-01",h:"13:00",l:"A1",v:"Mejor 3ro C/D/E",g:"16avos",s:"San Francisco",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-2",f:"2026-07-01",h:"20:00",l:"B1",v:"Mejor 3ro A/C/F",g:"16avos",s:"Kansas City",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-3",f:"2026-07-02",h:"13:00",l:"C1",v:"Mejor 3ro G/H/I",g:"16avos",s:"Los Ángeles",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-4",f:"2026-07-02",h:"20:00",l:"D1",v:"Mejor 3ro J/K/L",g:"16avos",s:"Nueva York",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-5",f:"2026-07-03",h:"13:00",l:"E1",v:"Mejor 3ro B/D/E",g:"16avos",s:"Seattle",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-6",f:"2026-07-03",h:"20:00",l:"F1",v:"Mejor 3ro A/B/F",g:"16avos",s:"Dallas",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-7",f:"2026-07-04",h:"13:00",l:"G1",v:"Mejor 3ro H/I/J",g:"16avos",s:"Boston",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-8",f:"2026-07-04",h:"20:00",l:"H1",v:"Mejor 3ro K/L/G",g:"16avos",s:"Atlanta",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-9",f:"2026-07-05",h:"13:00",l:"I1",v:"B2",g:"16avos",s:"Guadalajara",c:"Canal 5, Las Estrellas, Azteca 7",tv:true},
+  {id:"r16-10",f:"2026-07-05",h:"20:00",l:"J1",v:"A2",g:"16avos",s:"Ciudad de México",c:"Canal 5, Las Estrellas, Azteca 7",tv:true},
+  {id:"r16-11",f:"2026-07-06",h:"13:00",l:"K1",v:"L2",g:"16avos",s:"Monterrey",c:"Canal 5, Las Estrellas, Azteca 7",tv:true},
+  {id:"r16-12",f:"2026-07-06",h:"20:00",l:"L1",v:"K2",g:"16avos",s:"Filadelfia",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-13",f:"2026-07-07",h:"13:00",l:"E2",v:"F2",g:"16avos",s:"Miami",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-14",f:"2026-07-07",h:"20:00",l:"C2",v:"D2",g:"16avos",s:"Houston",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-15",f:"2026-07-08",h:"13:00",l:"G2",v:"H2",g:"16avos",s:"Vancouver",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"r16-16",f:"2026-07-08",h:"20:00",l:"I2",v:"J2",g:"16avos",s:"Toronto",c:"Canal 5, Las Estrellas",tv:true},
+  // Octavos
+  {id:"qf-1",f:"2026-07-11",h:"14:00",l:"R1",v:"R2",g:"Octavos",s:"Los Ángeles",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-2",f:"2026-07-11",h:"20:00",l:"R3",v:"R4",g:"Octavos",s:"Nueva York",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-3",f:"2026-07-12",h:"14:00",l:"R5",v:"R6",g:"Octavos",s:"Dallas",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-4",f:"2026-07-12",h:"20:00",l:"R7",v:"R8",g:"Octavos",s:"Kansas City",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-5",f:"2026-07-13",h:"14:00",l:"R9",v:"R10",g:"Octavos",s:"Boston",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-6",f:"2026-07-13",h:"20:00",l:"R11",v:"R12",g:"Octavos",s:"Seattle",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-7",f:"2026-07-14",h:"14:00",l:"R13",v:"R14",g:"Octavos",s:"Filadelfia",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"qf-8",f:"2026-07-14",h:"20:00",l:"R15",v:"R16",g:"Octavos",s:"Atlanta",c:"Canal 5, Las Estrellas",tv:true},
+  // Cuartos
+  {id:"sf-1",f:"2026-07-17",h:"14:00",l:"C1",v:"C2",g:"Cuartos",s:"Los Ángeles",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"sf-2",f:"2026-07-17",h:"20:00",l:"C3",v:"C4",g:"Cuartos",s:"Nueva York",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"sf-3",f:"2026-07-18",h:"14:00",l:"C5",v:"C6",g:"Cuartos",s:"Dallas",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"sf-4",f:"2026-07-18",h:"20:00",l:"C7",v:"C8",g:"Cuartos",s:"Boston",c:"Canal 5, Las Estrellas",tv:true},
+  // Semis
+  {id:"semi-1",f:"2026-07-22",h:"20:00",l:"Semi 1",v:"Semi 2",g:"Semifinales",s:"Dallas",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"semi-2",f:"2026-07-23",h:"20:00",l:"Semi 3",v:"Semi 4",g:"Semifinales",s:"Los Ángeles",c:"Canal 5, Las Estrellas",tv:true},
+  // 3er y Final
+  {id:"3rd",f:"2026-07-26",h:"14:00",l:"3er lugar 1",v:"3er lugar 2",g:"3er Lugar",s:"Miami",c:"Canal 5, Las Estrellas",tv:true},
+  {id:"final",f:"2026-07-27",h:"17:00",l:"🏆 Campeón",v:"🥈 Finalista",g:"Final",s:"Nueva York (MetLife)",c:"Canal 5, Las Estrellas",tv:true},
+];
+
+// ─── MARCADORES (se actualizan con la API) ─────────────────────────────────
+let marcadores = {};
+let ultimaActualizacion = null;
+let hayPartidosVivos = false;
+
+// ─── ESTADO DE FILTROS ─────────────────────────────────────────────────────
+let filtroMexico = false;
+let filtroAbierta = false;
+let filtroFase = "Todos";
+let filtroGrupo = "Todos";
+
+// ─── API ───────────────────────────────────────────────────────────────────
+async function actualizarMarcadores(manual = false) {
+  const btn = document.getElementById('btnRefresh');
+  btn.style.transform = 'rotate(0deg)';
+  btn.style.animation = 'spin 1s linear infinite';
+
+  try {
+    const res = await fetch('https://worldcup26.ir/get/games', {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+
+    marcadores = {};
+    hayPartidosVivos = false;
+
+    const games = Array.isArray(data) ? data : (data.games || data.matches || data.data || []);
+
+    games.forEach(game => {
+      // Intentamos mapear por nombre de equipos
+      const localNorm = normalizar(game.home_team || game.homeTeam || game.home || '');
+      const visitaNorm = normalizar(game.away_team || game.awayTeam || game.away || '');
+      const key = localNorm + '-' + visitaNorm;
+
+      const golesL = game.home_score ?? game.homeScore ?? game.home_goals ?? null;
+      const golesV = game.away_score ?? game.awayScore ?? game.away_goals ?? null;
+      const estado = (game.status || game.matchStatus || '').toLowerCase();
+      const minuto = game.minute || game.matchMinute || null;
+
+      const esVivo = estado.includes('live') || estado.includes('progress') ||
+                     estado === '1h' || estado === '2h' || estado === 'ht' || estado === 'et';
+      if (esVivo) hayPartidosVivos = true;
+
+      if (golesL !== null && golesV !== null) {
+        marcadores[key] = {
+          gL: golesL, gV: golesV,
+          vivo: esVivo,
+          minuto: minuto,
+          fin: estado.includes('finish') || estado.includes('ft') || estado === 'finished'
+        };
+      }
+    });
+
+    ultimaActualizacion = new Date();
+    setStatus('ok', `Actualizado ${ultimaActualizacion.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'})}`);
+
+    if (manual) mostrarToast('✅ Marcadores actualizados');
+  } catch (e) {
+    setStatus('err', 'Sin datos en vivo — mostrando últimos resultados');
+    if (manual) mostrarToast('⚠️ No se pudo conectar a la API');
+  }
+
+  btn.style.animation = '';
+  render();
+
+  // Auto-refresh cada 2 min si hay partidos vivos, si no cada 10 min
+  const intervalo = hayPartidosVivos ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  clearTimeout(window._refreshTimer);
+  window._refreshTimer = setTimeout(() => actualizarMarcadores(), intervalo);
+}
+
+function normalizar(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function buscarMarcador(p) {
+  // Intentamos por nombres normalizados
+  const lN = normalizar(p.l.replace(/[^\w\s]/g, '').trim());
+  const vN = normalizar(p.v.replace(/[^\w\s]/g, '').trim());
+  const key = lN + '-' + vN;
+  if (marcadores[key]) return marcadores[key];
+
+  // Buscar en todas las claves por similitud parcial
+  for (const k of Object.keys(marcadores)) {
+    const [kl, kv] = k.split('-');
+    if ((lN.includes(kl) || kl.includes(lN)) && (vN.includes(kv) || kv.includes(vN))) {
+      return marcadores[k];
+    }
+  }
+  return null;
+}
+
+function setStatus(tipo, msg) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot' + (tipo === 'ok' ? ' ok' : tipo === 'live' ? ' live' : '');
+  txt.textContent = msg;
+}
+
+// ─── FILTROS ───────────────────────────────────────────────────────────────
+function toggleMexico() {
+  filtroMexico = !filtroMexico;
+  document.getElementById('btnMexico').classList.toggle('active', filtroMexico);
+  render();
+}
+function toggleAbierta() {
+  filtroAbierta = !filtroAbierta;
+  document.getElementById('btnAbierta').classList.toggle('active', filtroAbierta);
+  render();
+}
+function setFase(f, el) {
+  filtroFase = f;
+  document.querySelectorAll('#chipsFase .chip').forEach(c => c.classList.remove('active-f'));
+  el.classList.add('active-f');
+  const showGrupos = f === 'Grupos' || f === 'Todos';
+  document.getElementById('chipsGrupo').style.display = showGrupos ? 'flex' : 'none';
+  if (!showGrupos) { filtroGrupo = 'Todos'; document.querySelector('#chipsGrupo .chip').classList.add('active-g'); }
+  render();
+}
+function setGrupo(g, el) {
+  filtroGrupo = g;
+  document.querySelectorAll('#chipsGrupo .chip').forEach(c => c.classList.remove('active-g'));
+  el.classList.add('active-g');
+  render();
+}
+
+const GRUPOS_FASE = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+function esGrupo(g) { return GRUPOS_FASE.includes(g); }
+
+function filtrar() {
+  return partidos.filter(p => {
+    if (filtroMexico && !p.mx) return false;
+    if (filtroAbierta && !p.tv) return false;
+    if (filtroFase === 'Grupos' && !esGrupo(p.g)) return false;
+    if (filtroFase !== 'Todos' && filtroFase !== 'Grupos' && p.g !== filtroFase) return false;
+    if (filtroGrupo !== 'Todos' && p.g !== filtroGrupo) return false;
+    return true;
+  });
+}
+
+function esHoy(f) {
+  const hoy = new Date();
+  const [y,m,d] = f.split('-').map(Number);
+  return hoy.getFullYear() === y && hoy.getMonth()+1 === m && hoy.getDate() === d;
+}
+
+function formatFecha(f) {
+  const [y,m,d] = f.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  const hoy = esHoy(f);
+  const txt = `${DIAS[date.getDay()]} ${d} ${MESES[m-1]}`;
+  return hoy ? `<span class="fecha-hoy">📅 HOY — ${txt.toUpperCase()}</span>` : txt.toUpperCase();
+}
+
+// ─── RENDER ────────────────────────────────────────────────────────────────
+function render() {
+  const data = filtrar();
+  const content = document.getElementById('content');
+
+  if (!data.length) {
+    content.innerHTML = '<div class="empty"><div class="ico">⚽</div><p>No hay partidos con este filtro</p></div>';
+    return;
+  }
+
+  const byDate = {};
+  data.forEach(p => { if (!byDate[p.f]) byDate[p.f] = []; byDate[p.f].push(p); });
+  const sorted = Object.entries(byDate).sort(([a],[b]) => a.localeCompare(b));
+
+  let html = '';
+  sorted.forEach(([fecha, ps]) => {
+    html += `<div class="fecha-header"><div class="fecha-line"></div><span class="fecha-label">${formatFecha(fecha)}</span><div class="fecha-line"></div></div>`;
+
+    ps.forEach(p => {
+      const marc = buscarMarcador(p);
+      const isElim = !esGrupo(p.g);
+      let cls = p.mx ? 'partido mexico' : isElim ? 'partido elim' : 'partido';
+      if (marc?.vivo) cls += ' en-vivo';
+
+      const canales = p.c.split(',').map(s => s.trim());
+      const principal = canales[0];
+      const extra = canales.slice(1);
+      const canalCls = p.tv ? 'canal-badge canal-tv' : 'canal-badge canal-cable';
+      const canalIco = p.tv ? '📺' : '📡';
+      const grupoTag = esGrupo(p.g) ? `G-${p.g}` : p.g;
+
+      let marcadorHtml = '';
+      if (marc) {
+        const liveBadge = marc.vivo ? `<span class="live-badge">EN VIVO${marc.minuto ? ' '+marc.minuto+"'" : ''}</span>` : '';
+        const marcCls = 'marcador' + (marc.vivo ? ' en-vivo' : '');
+        marcadorHtml = `${liveBadge}<span class="${marcCls}">${marc.gL} — ${marc.gV}</span>`;
+      }
+
+      html += `
+      <div class="${cls}">
+        <div class="partido-inner">
+          <div class="hora-box">
+            <span class="hora">${p.h}</span>
+            <span class="grupo-tag">${grupoTag}</span>
+          </div>
+          <div class="match-center">
+            ${marcadorHtml}
+            <div class="equipos">${p.l} <span class="sep">vs</span> ${p.v}</div>
+            <div class="sede-txt">📍 ${p.s}</div>
+          </div>
+          <div class="canal-box">
+            <span class="${canalCls}">${canalIco} ${principal}${extra.length ? ` <span style="opacity:.6">+${extra.length}</span>` : ''}</span>
+          </div>
+        </div>
+        ${extra.length ? `<div class="canales-extra">También: ${extra.join(', ')}</div>` : ''}
+      </div>`;
+    });
+  });
+
+  html += `<div class="nota"><strong>ℹ️ Notas</strong><br>
+    • Horarios en hora del Centro de México (CDT)<br>
+    • Marcadores se actualizan automáticamente al abrir la app<br>
+    • 🟢 En verde = TV Abierta gratis &nbsp; 🔵 En azul = Cable / ViX Premium</div>`;
+
+  content.innerHTML = html;
+
+  // Status de partidos vivos
+  if (hayPartidosVivos) setStatus('live', 'Hay partidos en vivo — actualizando cada 2 min');
+}
+
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+render();
+actualizarMarcadores();
+</script>
+</body>
+</html>
