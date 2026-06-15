@@ -283,7 +283,23 @@ const partidos = [
   {id:"final",f:"2026-07-27",h:"17:00",l:"🏆 Campeón",v:"🥈 Finalista",g:"Final",s:"Nueva York (MetLife)",c:"Canal 5, Las Estrellas",tv:true},
 ];
 
-// ─── MARCADORES (se actualizan con la API) ─────────────────────────────────
+// ─── RESULTADOS CONFIRMADOS (base fija, la API complementa en vivo) ──────────
+const RESULTADOS_BASE = {
+  // Jun 11
+  "mexicosudafrica":        {gL:2, gV:0, fin:true},
+  "coreiadelsurrepcheca":   {gL:2, gV:1, fin:true},
+  // Jun 12
+  "canadabosniaherz":       {gL:1, gV:1, fin:true},
+  "estadosunidosparaguay":  {gL:4, gV:1, fin:true},
+  // Jun 13
+  "qatarsuiza":             {gL:1, gV:1, fin:true},
+  "brasilmarruecos":        {gL:1, gV:1, fin:true},
+  "haitiescocia":           {gL:0, gV:1, fin:true},
+  "australiaturquia":       {gL:2, gV:0, fin:true},
+  // Jun 14
+  "alemaniaCurazao":        {gL:7, gV:1, fin:true},
+};
+
 let marcadores = {};
 let ultimaActualizacion = null;
 let hayPartidosVivos = false;
@@ -299,6 +315,9 @@ async function actualizarMarcadores(manual = false) {
   const btn = document.getElementById('btnRefresh');
   btn.style.transform = 'rotate(0deg)';
   btn.style.animation = 'spin 1s linear infinite';
+
+  // Siempre partimos de resultados confirmados
+  marcadores = {...RESULTADOS_BASE};
 
   try {
     const res = await fetch('https://worldcup26.ir/get/games', {
@@ -362,17 +381,23 @@ function normalizar(str) {
 }
 
 function buscarMarcador(p) {
-  // Intentamos por nombres normalizados
   const lN = normalizar(p.l.replace(/[^\w\s]/g, '').trim());
   const vN = normalizar(p.v.replace(/[^\w\s]/g, '').trim());
-  const key = lN + '-' + vN;
-  if (marcadores[key]) return marcadores[key];
+  
+  // Clave directa sin separador (para RESULTADOS_BASE)
+  const keyJunto = lN + vN;
+  if (marcadores[keyJunto]) return marcadores[keyJunto];
 
-  // Buscar en todas las claves por similitud parcial
+  // Clave con guión (para datos de API)
+  const keyGuion = lN + '-' + vN;
+  if (marcadores[keyGuion]) return marcadores[keyGuion];
+
+  // Búsqueda parcial en todos los keys
   for (const k of Object.keys(marcadores)) {
-    const [kl, kv] = k.split('-');
-    if ((lN.includes(kl) || kl.includes(lN)) && (vN.includes(kv) || kv.includes(vN))) {
-      return marcadores[k];
+    const kNorm = k.replace('-','');
+    if (kNorm.includes(lN.slice(0,5)) && kNorm.includes(vN.slice(0,5))) {
+      const m = marcadores[k];
+      if (m.gL !== null) return m;
     }
   }
   return null;
